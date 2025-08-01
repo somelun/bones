@@ -1,0 +1,6 @@
+.DS_Store
+*.pdx
+*.dylib
+*.elf
+logs
+/build/
