@@ -5,6 +5,9 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
 
+constexpr int Width  = 800;
+constexpr int Height = 600;
+
 const char* vertexShaderSource = R"(
   #version 330 core
   layout (location = 0) in vec3 aPos;
@@ -25,11 +28,18 @@ struct Vertex {
   float position[3];
 };
 
-bool test_fbx(std::vector<Vertex>& out_vertices) {
-  out_vertices.push_back(Vertex{-0.5f, -0.5f, 0.0f});
-  out_vertices.push_back(Vertex{ 0.5f, -0.5f, 0.0f});
-  out_vertices.push_back(Vertex{ 0.0f,  0.5f, 0.0f});
-  return true;
+void test_object(std::vector<Vertex>& out_vertices, std::vector<GLuint>& out_indices) {
+  const float s = sqrtf(3.0f);
+
+  out_vertices.push_back(Vertex{-0.5f, -0.5f * s / 3.0f,        0.0f});
+  out_vertices.push_back(Vertex{ 0.5f, -0.5f * s / 3.0f,        0.0f});
+  out_vertices.push_back(Vertex{ 0.0f,  0.5f * s * 2.0f / 3.0f, 0.0f});
+
+  out_vertices.push_back(Vertex{-0.5f / 2.0f, 0.5f * s / 6.0f, 0.0f});
+  out_vertices.push_back(Vertex{ 0.5f / 2.0f, 0.5f * s / 6.0f, 0.0f});
+  out_vertices.push_back(Vertex{ 0.0f,       -0.5f * s / 3.0f, 0.0f});
+
+  out_indices = {0, 3, 5, 3, 2, 4, 5, 4, 1};
 }
 
 bool load_fbx(const char* path, std::vector<Vertex>& out_vertices) {
@@ -74,8 +84,8 @@ int main(int argc, char* argv[]) {
 
   SDL_Window* window = SDL_CreateWindow(
     "bones",
-    800,
-    600,
+    Width,
+    Height,
     SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL
   );
 
@@ -98,11 +108,12 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
+  glViewport(0, 0, Width, Height);
+
   std::vector<Vertex> vertices;
+  std::vector<GLuint> indices;
   if (argc < 2) {
-    if (!test_fbx(vertices)) {
-      return 1;
-    }
+    test_object(vertices, indices);
   } else {
     if (!load_fbx(argv[1], vertices)) {
       return 1;
@@ -125,20 +136,26 @@ int main(int argc, char* argv[]) {
   glDeleteShader(vertexShader);
   glDeleteShader(fragmentShader);
 
-  GLuint vao, vbo;
+  GLuint vao, vbo, ebo;
+
   glGenVertexArrays(1, &vao);
+  glGenBuffers(1, &vbo);
+  glGenBuffers(1, &ebo);
+
   glBindVertexArray(vao);
 
-  glGenBuffers(1, &vbo);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
+
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
+
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
   glEnableVertexAttribArray(0);
 
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
-
-  glViewport(0, 0, 800, 600);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
   bool running = true;
   SDL_Event event;
@@ -163,13 +180,14 @@ int main(int argc, char* argv[]) {
     glUseProgram(shaderProgram);
     glBindVertexArray(vao);
 
-    glDrawArrays(GL_TRIANGLES, 0, (GLsizei)vertices.size());
+    glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
 
     SDL_GL_SwapWindow(window);
   }
 
   glDeleteVertexArrays(1, &vao);
   glDeleteBuffers(1, &vbo);
+  glDeleteBuffers(1, &ebo);
   glDeleteProgram(shaderProgram);
 
   SDL_GL_DestroyContext(context);
