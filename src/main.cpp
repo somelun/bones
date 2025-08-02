@@ -5,21 +5,27 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
 
-constexpr int Width  = 800;
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
+constexpr int Width  = 600;
 constexpr int Height = 600;
 
 const char* vertexShaderSource = R"(
   #version 330 core
   layout (location = 0) in vec3 aPos;
   layout (location = 1) in vec3 aColor;
+  layout (location = 2) in vec2 aTex;
 
   out vec3 color;
+  out vec2 texCoord;
 
   uniform float scale;
 
   void main() {
     gl_Position = vec4(aPos.x + aPos.x * scale, aPos.y + aPos.y * scale, aPos.z + aPos.z * scale, 1.0);
     color = aColor;
+    texCoord = aTex;
   }
 )";
 
@@ -28,9 +34,12 @@ const char* fragmentShaderSource = R"(
   out vec4 FragColor;
 
   in vec3 color;
+  in vec2 texCoord;
+
+  uniform sampler2D tex0;
 
   void main() {
-    FragColor = vec4(color, 1.0);
+    FragColor = texture(tex0, texCoord);
   }
 )";
 
@@ -40,19 +49,16 @@ struct Vertex {
 
 constexpr float s = 1.73205080757f;// sqrtf(3.0f);
 GLfloat vertices[] = {
-// position                                 | color
-  -0.5f,       -0.5f * s / 3.0f,        0.0f, 0.8f, 0.3f,  0.02f, 
-   0.5f,       -0.5f * s / 3.0f,        0.0f, 0.8f, 0.3f,  0.02f,
-   0.0f,        0.5f * s * 2.0f / 3.0f, 0.0f, 1.0f, 0.6f,  0.32f,
-  -0.5f / 2.0f, 0.5f * s / 6.0f,        0.0f, 0.9f, 0.45f, 0.17f,
-   0.5f / 2.0f, 0.5f * s / 6.0f,        0.0f, 0.9f, 0.45f, 0.17f,
-   0.0f,       -0.5f * s / 3.0f,        0.0f, 0.8f, 0.3f,  0.02f
+// position           | color           | UV
+  -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+  -0.5f,  0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
+   0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,
+   0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f
 };
 
 GLuint indices[] = {
-  0, 3, 5,
-  3, 2, 4,
-  5, 4, 1
+  0, 2, 1,
+  0, 3, 2
 };
 
 bool load_fbx(const char* path, std::vector<Vertex>& out_vertices) {
@@ -163,16 +169,62 @@ int main(int argc, char* argv[]) {
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
   glEnableVertexAttribArray(0);
   glEnableVertexAttribArray(1);
+  glEnableVertexAttribArray(2);
 
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
   GLuint uniID = glGetUniformLocation(shaderProgram, "scale");
+
+  // texture
+  int tex_width, tex_heigth, tex_ch;
+  unsigned char* texture_bytes = stbi_load(
+      "../assets/texture128.png",
+      &tex_width,
+      &tex_heigth,
+      &tex_ch,
+      0);
+
+  if (texture_bytes == NULL) {
+    std::cerr << "Failed to load texture " << std::endl;
+    return 1;
+  }
+
+  GLuint texture;
+  glGenTextures(1, &texture);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, texture);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+  glTexImage2D(
+      GL_TEXTURE_2D,
+      0,
+      GL_RGBA,
+      tex_width,
+      tex_heigth,
+      0,
+      GL_RGBA,
+      GL_UNSIGNED_BYTE,
+      texture_bytes);
+  glGenerateMipmap(GL_TEXTURE_2D);
+
+  stbi_image_free(texture_bytes);
+  glBindTexture(GL_TEXTURE_2D, 0);
+
+  GLuint tex0uni = glGetUniformLocation(shaderProgram, "tex0");
+  glUseProgram(shaderProgram);
+  glUniform1i(tex0uni, 0);
 
   bool running = true;
   SDL_Event event;
@@ -196,9 +248,10 @@ int main(int argc, char* argv[]) {
 
     glUseProgram(shaderProgram);
     glUniform1f(uniID, 0.5f);
+    glBindTexture(GL_TEXTURE_2D, texture);
     glBindVertexArray(vao);
 
-    glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
     SDL_GL_SwapWindow(window);
   }
@@ -206,6 +259,7 @@ int main(int argc, char* argv[]) {
   glDeleteVertexArrays(1, &vao);
   glDeleteBuffers(1, &vbo);
   glDeleteBuffers(1, &ebo);
+  glDeleteTextures(1, &texture);
   glDeleteProgram(shaderProgram);
 
   SDL_GL_DestroyContext(context);

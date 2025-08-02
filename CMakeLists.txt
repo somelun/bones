@@ -18,3 +18,5 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 target_link_libraries(${PROJECT_NAME} PRIVATE ufbx)
 target_link_libraries(${PROJECT_NAME} PRIVATE GLEW::GLEW)
 target_link_libraries(${PROJECT_NAME} PRIVATE SDL3::SDL3)
+
+target_include_directories(${PROJECT_NAME} PRIVATE external/stb)
