@@ -28,19 +28,21 @@ struct Vertex {
   float position[3];
 };
 
-void test_object(std::vector<Vertex>& out_vertices, std::vector<GLuint>& out_indices) {
-  const float s = sqrtf(3.0f);
+constexpr float s = 1.73205080757f;// sqrtf(3.0f);
+GLfloat vertices[] = {
+  -0.5f,       -0.5f * s / 3.0f,        0.0f,
+   0.5f,       -0.5f * s / 3.0f,        0.0f,
+   0.0f,        0.5f * s * 2.0f / 3.0f, 0.0f,
+  -0.5f / 2.0f, 0.5f * s / 6.0f,        0.0f,
+   0.5f / 2.0f, 0.5f * s / 6.0f,        0.0f,
+   0.0f,       -0.5f * s / 3.0f,        0.0f
+};
 
-  out_vertices.push_back(Vertex{-0.5f, -0.5f * s / 3.0f,        0.0f});
-  out_vertices.push_back(Vertex{ 0.5f, -0.5f * s / 3.0f,        0.0f});
-  out_vertices.push_back(Vertex{ 0.0f,  0.5f * s * 2.0f / 3.0f, 0.0f});
-
-  out_vertices.push_back(Vertex{-0.5f / 2.0f, 0.5f * s / 6.0f, 0.0f});
-  out_vertices.push_back(Vertex{ 0.5f / 2.0f, 0.5f * s / 6.0f, 0.0f});
-  out_vertices.push_back(Vertex{ 0.0f,       -0.5f * s / 3.0f, 0.0f});
-
-  out_indices = {0, 3, 5, 3, 2, 4, 5, 4, 1};
-}
+GLuint indices[] = {
+  0, 3, 5,
+  3, 2, 4,
+  5, 4, 1
+};
 
 bool load_fbx(const char* path, std::vector<Vertex>& out_vertices) {
   ufbx_load_opts opts = {0};
@@ -110,15 +112,15 @@ int main(int argc, char* argv[]) {
 
   glViewport(0, 0, Width, Height);
 
-  std::vector<Vertex> vertices;
-  std::vector<GLuint> indices;
-  if (argc < 2) {
-    test_object(vertices, indices);
-  } else {
-    if (!load_fbx(argv[1], vertices)) {
-      return 1;
-    }
-  }
+  // std::vector<Vertex> vertices;
+  // std::vector<GLuint> indices;
+  // if (argc < 2) {
+  //   test_object(vertices, indices);
+  // } else {
+  //   if (!load_fbx(argv[1], vertices)) {
+  //     return 1;
+  //   }
+  // }
 
   GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
   glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
@@ -145,10 +147,10 @@ int main(int argc, char* argv[]) {
   glBindVertexArray(vao);
 
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
   glEnableVertexAttribArray(0);
