@@ -15,8 +15,10 @@ const char* vertexShaderSource = R"(
 
   out vec3 color;
 
+  uniform float scale;
+
   void main() {
-    gl_Position = vec4(aPos, 1.0);
+    gl_Position = vec4(aPos.x + aPos.x * scale, aPos.y + aPos.y * scale, aPos.z + aPos.z * scale, 1.0);
     color = aColor;
   }
 )";
@@ -170,6 +172,8 @@ int main(int argc, char* argv[]) {
   glBindVertexArray(0);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
+  GLuint uniID = glGetUniformLocation(shaderProgram, "scale");
+
   bool running = true;
   SDL_Event event;
 
@@ -191,6 +195,7 @@ int main(int argc, char* argv[]) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glUseProgram(shaderProgram);
+    glUniform1f(uniID, 0.5f);
     glBindVertexArray(vao);
 
     glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
