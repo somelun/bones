@@ -8,6 +8,10 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 constexpr int Width  = 600;
 constexpr int Height = 600;
 
@@ -184,6 +188,7 @@ int main(int argc, char* argv[]) {
 
   // texture
   int tex_width, tex_heigth, tex_ch;
+  stbi_set_flip_vertically_on_load(true);
   unsigned char* texture_bytes = stbi_load(
       "../assets/texture128.png",
       &tex_width,
