@@ -26,8 +26,12 @@ const char* vertexShaderSource = R"(
 
   uniform float scale;
 
+  uniform mat4 model;
+  uniform mat4 view;
+  uniform mat4 projection;
+
   void main() {
-    gl_Position = vec4(aPos.x + aPos.x * scale, aPos.y + aPos.y * scale, aPos.z + aPos.z * scale, 1.0);
+    gl_Position = projection * view * model * vec4(aPos, 1.0);
     color = aColor;
     texCoord = aTex;
   }
@@ -234,6 +238,18 @@ int main(int argc, char* argv[]) {
   bool running = true;
   SDL_Event event;
 
+  glm::mat4 model_mat = glm::mat4(1.0f);
+  glm::mat4 view_mat = glm::mat4(1.0f);
+  glm::mat4 projection_mat = glm::mat4(1.0f);
+
+  view_mat = glm::translate(view_mat, glm::vec3(0.0f, -0.5f, 0.2f));
+  projection_mat = glm::perspective(
+      glm::radians(45.0f),
+      (float)(Width / Height),
+      0.1f,
+      100.0f
+    );
+
   while (running) {
     while (SDL_PollEvent(&event)) {
       switch (event.type) {
@@ -252,6 +268,14 @@ int main(int argc, char* argv[]) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glUseProgram(shaderProgram);
+
+    int model_location = glGetUniformLocation(shaderProgram, "model");
+    glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(model_mat));
+    int view_location = glGetUniformLocation(shaderProgram, "view");
+    glUniformMatrix4fv(view_location, 1, GL_FALSE, glm::value_ptr(view_mat));
+    int projection_location = glGetUniformLocation(shaderProgram, "projection");
+    glUniformMatrix4fv(projection_location, 1, GL_FALSE, glm::value_ptr(projection_mat));
+
     glUniform1f(uniID, 0.5f);
     glBindTexture(GL_TEXTURE_2D, texture);
     glBindVertexArray(vao);
