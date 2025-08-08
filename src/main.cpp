@@ -57,16 +57,21 @@ struct Vertex {
 
 constexpr float s = 1.73205080757f;// sqrtf(3.0f);
 GLfloat vertices[] = {
-// position           | color           | UV
-  -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-  -0.5f,  0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
-   0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,
-   0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f
+// position             | color               | UV
+  -0.5f,  0.0f,  0.5f,  0.83f, 0.70f, 0.44f,  0.0f, 0.0f,
+  -0.5f,  0.0f, -0.5f,  0.83f, 0.70f, 0.44f,  5.0f, 0.0f,
+   0.5f,  0.0f, -0.5f,  0.83f, 0.70f, 0.44f,  0.0f, 0.0f,
+   0.5f,  0.0f,  0.5f,  0.83f, 0.70f, 0.44f,  5.0f, 0.0f,
+   0.0f,  0.8f,  0.0f,  0.92f, 0.86f, 0.76f,  2.5f, 5.0f
 };
 
 GLuint indices[] = {
-  0, 2, 1,
-  0, 3, 2
+  0, 1, 2,
+  0, 2, 3,
+  0, 1, 4,
+  1, 2, 4,
+  2, 3, 4,
+  3, 0, 4
 };
 
 bool load_fbx(const char* path, std::vector<Vertex>& out_vertices) {
@@ -238,17 +243,19 @@ int main(int argc, char* argv[]) {
   bool running = true;
   SDL_Event event;
 
-  glm::mat4 model_mat = glm::mat4(1.0f);
   glm::mat4 view_mat = glm::mat4(1.0f);
   glm::mat4 projection_mat = glm::mat4(1.0f);
 
-  view_mat = glm::translate(view_mat, glm::vec3(0.0f, -0.5f, 0.2f));
+  view_mat = glm::translate(view_mat, glm::vec3(0.0f, 0.3f, -4.0f));
   projection_mat = glm::perspective(
       glm::radians(45.0f),
       (float)(Width / Height),
       0.1f,
       100.0f
     );
+
+  float rotation = 0.0f;
+  uint64_t prev_time = SDL_GetTicks();
 
   while (running) {
     while (SDL_PollEvent(&event)) {
@@ -269,6 +276,16 @@ int main(int argc, char* argv[]) {
 
     glUseProgram(shaderProgram);
 
+    uint64_t current_time = SDL_GetTicks();
+    uint64_t elapsed = current_time - prev_time;
+    if (elapsed >= 16) {
+      prev_time = current_time;
+      rotation += 0.1f;
+    }
+
+    glm::mat4 model_mat = glm::mat4(1.0f);
+    model_mat = glm::rotate(model_mat, glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.0f));
+
     int model_location = glGetUniformLocation(shaderProgram, "model");
     glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(model_mat));
     int view_location = glGetUniformLocation(shaderProgram, "view");
@@ -280,7 +297,7 @@ int main(int argc, char* argv[]) {
     glBindTexture(GL_TEXTURE_2D, texture);
     glBindVertexArray(vao);
 
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(int), GL_UNSIGNED_INT, 0);
 
     SDL_GL_SwapWindow(window);
   }
