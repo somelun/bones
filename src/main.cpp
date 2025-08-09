@@ -246,7 +246,7 @@ int main(int argc, char* argv[]) {
   glm::mat4 view_mat = glm::mat4(1.0f);
   glm::mat4 projection_mat = glm::mat4(1.0f);
 
-  view_mat = glm::translate(view_mat, glm::vec3(0.0f, 0.3f, -4.0f));
+  view_mat = glm::translate(view_mat, glm::vec3(0.0f, -0.3f, -3.0f));
   projection_mat = glm::perspective(
       glm::radians(45.0f),
       (float)(Width / Height),
@@ -256,6 +256,8 @@ int main(int argc, char* argv[]) {
 
   float rotation = 0.0f;
   uint64_t prev_time = SDL_GetTicks();
+
+  glEnable(GL_DEPTH_TEST);
 
   while (running) {
     while (SDL_PollEvent(&event)) {
@@ -280,7 +282,7 @@ int main(int argc, char* argv[]) {
     uint64_t elapsed = current_time - prev_time;
     if (elapsed >= 16) {
       prev_time = current_time;
-      rotation += 0.1f;
+      rotation += 0.25f;
     }
 
     glm::mat4 model_mat = glm::mat4(1.0f);
